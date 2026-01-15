@@ -6,47 +6,106 @@ WasteTrace is a municipal waste analytics platform that combines FastAPI backend
 
 ## Architecture Diagram
 
+### System Flow Diagram
+
 ```mermaid
-graph TB
-    subgraph "Frontend Layer"
-        UI[Streamlit UI<br/>streamlit_app.py]
-        UI -->|User Questions| API
+flowchart TD
+    Start([User Enters Question]) --> UI[Streamlit UI<br/>streamlit_app.py]
+    
+    UI -->|POST /query| API[FastAPI Server<br/>src/app.py]
+    
+    API -->|Process Query| Router[Query Router<br/>src/utils/router.py]
+    
+    Router -->|Extract Intent| Intent[Intent Extractor<br/>src/utils/intent.py]
+    Router -->|Extract State| StateParser[State Parser]
+    Router -->|Extract Year| YearParser[Year Parser<br/>2015-2024]
+    
+    Intent -->|Intent Type| Router
+    StateParser -->|State Name| Router
+    YearParser -->|Year Value| Router
+    
+    Router -->|Route to Dataset| Pipeline[EPA State MSW Pipeline<br/>src/pipelines/epa_state_msw.py]
+    
+    Pipeline -->|Query Data| EPA[(EPA State MSW Dataset<br/>2018 Data)]
+    EPA -->|Return Data| Pipeline
+    
+    Pipeline -->|Raw Data| Answer[Answer Formatter<br/>src/utils/answer.py]
+    
+    Answer -->|Formatted Response| API
+    API -->|Display Result| UI
+    UI --> End([User Sees Answer])
+    
+    subgraph MCP[Alternative: MCP Integration]
+        MCP_Server[MCP Stdio Server<br/>mcp_server_stdio.py]
+        LLM[LLM Client]
+        MCP_Server <-->|JSON-RPC| LLM
+        MCP_Server -->|Tool Calls| Router
     end
     
-    subgraph "API Layer"
-        API[FastAPI Server<br/>src/app.py]
-        API -->|Routes Query| Router
+    style Start fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    style End fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style UI fill:#ff6a00,stroke:#333,stroke-width:3px,color:#fff
+    style API fill:#1e0536,stroke:#333,stroke-width:3px,color:#fff
+    style Router fill:#5b0e2d,stroke:#333,stroke-width:3px,color:#fff
+    style Pipeline fill:#7dd3fc,stroke:#0277bd,stroke-width:3px,color:#000
+    style Answer fill:#7dd3fc,stroke:#0277bd,stroke-width:3px,color:#000
+    style EPA fill:#1565c0,stroke:#0d47a1,stroke-width:3px,color:#fff
+    style MCP fill:#fff9c4,stroke:#f57f17,stroke-width:2px,color:#000
+    style MCP_Server fill:#ffd166,stroke:#333,stroke-width:2px,color:#000
+    style LLM fill:#ffd166,stroke:#333,stroke-width:2px,color:#000
+```
+
+### Component Architecture
+
+```mermaid
+graph LR
+    subgraph Frontend["🖥️ Frontend Layer"]
+        UI[Streamlit UI<br/>Port: 8501]
     end
     
-    subgraph "Processing Layer"
-        Router[Query Router<br/>src/utils/router.py]
-        Router -->|Extracts Intent| Intent[Intent Extractor<br/>src/utils/intent.py]
-        Router -->|Extracts State/Year| Parser[State/Year Parser]
-        Router -->|Routes to Dataset| Pipeline
+    subgraph API["⚙️ API Layer"]
+        FastAPI[FastAPI Server<br/>Port: 8000<br/>/query endpoint]
     end
     
-    subgraph "Data Layer"
-        Pipeline[EPA State MSW Pipeline<br/>src/pipelines/epa_state_msw.py]
-        Pipeline -->|Returns Data| Answer[Answer Formatter<br/>src/utils/answer.py]
-        Answer -->|Formatted Response| API
+    subgraph Processing["🔍 Processing Layer"]
+        Router[Query Router]
+        Intent[Intent Extractor]
+        Parser[State/Year Parser]
     end
     
-    subgraph "MCP Layer"
-        MCP[MCP Stdio Server<br/>mcp_server_stdio.py]
-        MCP -->|Tool Calls| Router
-        MCP -->|JSON-RPC| LLM[LLM Client]
+    subgraph Data["💾 Data Layer"]
+        Pipeline[EPA Pipeline]
+        Formatter[Answer Formatter]
     end
     
-    subgraph "External Data"
-        EPA[EPA State MSW Dataset<br/>2018 Data]
-        Pipeline -->|Queries| EPA
+    subgraph External["📊 External Data"]
+        EPA[EPA Dataset<br/>10 States, 2018]
     end
     
-    style UI fill:#ff6a00,stroke:#333,stroke-width:2px,color:#fff
+    subgraph MCP["🔌 MCP Layer"]
+        MCP_Server[MCP Server]
+        LLM_Client[LLM Client]
+    end
+    
+    UI -->|HTTP Request| FastAPI
+    FastAPI -->|Route| Router
+    Router --> Intent
+    Router --> Parser
+    Router -->|Call| Pipeline
+    Pipeline -->|Query| EPA
+    Pipeline -->|Data| Formatter
+    Formatter -->|Response| FastAPI
+    FastAPI -->|JSON| UI
+    
+    MCP_Server -.->|Tool Calls| Router
+    MCP_Server <-->|JSON-RPC| LLM_Client
+    
+    style Frontend fill:#ff6a00,stroke:#333,stroke-width:2px,color:#fff
     style API fill:#1e0536,stroke:#333,stroke-width:2px,color:#fff
-    style Router fill:#5b0e2d,stroke:#333,stroke-width:2px,color:#fff
-    style Pipeline fill:#7dd3fc,stroke:#333,stroke-width:2px,color:#000
-    style MCP fill:#ffd166,stroke:#333,stroke-width:2px,color:#000
+    style Processing fill:#5b0e2d,stroke:#333,stroke-width:2px,color:#fff
+    style Data fill:#7dd3fc,stroke:#0277bd,stroke-width:2px,color:#000
+    style External fill:#1565c0,stroke:#0d47a1,stroke-width:2px,color:#fff
+    style MCP fill:#ffd166,stroke:#f57f17,stroke-width:2px,color:#000
 ```
 
 ## Component Details

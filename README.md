@@ -10,34 +10,58 @@ and optimization opportunities across time and geography.
 For detailed architecture documentation and diagrams, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ```
-┌─────────────┐
-│ Streamlit   │  User Interface
-│    UI       │
-└──────┬──────┘
-       │ Questions
-       ▼
-┌─────────────┐
-│  FastAPI    │  REST API
-│   Server    │
-└──────┬──────┘
-       │ Routes
-       ▼
-┌─────────────┐
-│   Router    │  Query Processing
-│  + Intent   │
-└──────┬──────┘
-       │
-       ▼
-┌─────────────┐      ┌──────────────┐
-│ EPA Pipeline│◄─────┤ EPA State MSW │
-│             │      │    Dataset    │
-└──────┬──────┘      └──────────────┘
-       │
-       ▼
-┌─────────────┐
-│   Answer    │  Formatted Response
-│  Formatter  │
-└─────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    USER INTERACTION                          │
+│  "Recycling rate in Texas 2018"                            │
+└───────────────────────┬─────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────────────────────┐
+│  FRONTEND LAYER                                             │
+│  ┌──────────────┐                                           │
+│  │ Streamlit UI │  Port: 8501                              │
+│  │ (User Input) │                                           │
+│  └──────┬───────┘                                           │
+└─────────┼───────────────────────────────────────────────────┘
+          │ HTTP POST /query
+          ▼
+┌─────────────────────────────────────────────────────────────┐
+│  API LAYER                                                  │
+│  ┌──────────────┐                                           │
+│  │ FastAPI      │  Port: 8000                               │
+│  │ Server       │                                           │
+│  └──────┬───────┘                                           │
+└─────────┼───────────────────────────────────────────────────┘
+          │ Route Query
+          ▼
+┌─────────────────────────────────────────────────────────────┐
+│  PROCESSING LAYER                                           │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐     │
+│  │ Query Router │→ │   Intent     │  │ State/Year   │     │
+│  │              │  │  Extractor   │  │   Parser     │     │
+│  └──────┬───────┘  └──────────────┘  └──────────────┘     │
+└─────────┼───────────────────────────────────────────────────┘
+          │ Extract: state="Texas", year="2018", intent="recycling_rate"
+          ▼
+┌─────────────────────────────────────────────────────────────┐
+│  DATA LAYER                                                 │
+│  ┌──────────────┐      ┌──────────────────────┐           │
+│  │ EPA Pipeline │◄─────┤ EPA State MSW Dataset│           │
+│  │              │      │ (10 States, 2018)     │           │
+│  └──────┬───────┘      └──────────────────────┘           │
+│         │ Returns: {"value": 24.5, "year": "2018"}         │
+│         ▼                                                   │
+│  ┌──────────────┐                                           │
+│  │   Answer     │  Format: "Recycling rate for Texas...    │
+│  │  Formatter   │           24.5% (EPA State MSW dataset)" │
+│  └──────┬───────┘                                           │
+└─────────┼───────────────────────────────────────────────────┘
+          │ Formatted Response
+          ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    USER SEES RESULT                          │
+│  "Recycling rate for Texas in 2018: 24.5%"                  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 Key features
