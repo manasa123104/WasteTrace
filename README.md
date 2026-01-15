@@ -5,13 +5,49 @@ WasteTrace is a municipal waste analytics platform with MCP-based tools and
 LLM-ready querying. It helps cities analyze waste streams, recycling rates,
 and optimization opportunities across time and geography.
 
+## Architecture
+
+For detailed architecture documentation and diagrams, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+```
+┌─────────────┐
+│ Streamlit   │  User Interface
+│    UI       │
+└──────┬──────┘
+       │ Questions
+       ▼
+┌─────────────┐
+│  FastAPI    │  REST API
+│   Server    │
+└──────┬──────┘
+       │ Routes
+       ▼
+┌─────────────┐
+│   Router    │  Query Processing
+│  + Intent   │
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐      ┌──────────────┐
+│ EPA Pipeline│◄─────┤ EPA State MSW │
+│             │      │    Dataset    │
+└──────┬──────┘      └──────────────┘
+       │
+       ▼
+┌─────────────┐
+│   Answer    │  Formatted Response
+│  Formatter  │
+└─────────────┘
+```
+
 Key features
 ------------
 - FastAPI API for waste stream analytics
 - Streamlit UI for interactive exploration
-- DuckDB for local analytical storage
+- EPA State MSW dataset integration (2018 data for 10 US states)
 - MCP stdio server for tool access
-- Baseline LLM harness for natural language queries
+- Natural language query processing
+- Real recycling rate data retrieval
 
 Quick start
 -----------
